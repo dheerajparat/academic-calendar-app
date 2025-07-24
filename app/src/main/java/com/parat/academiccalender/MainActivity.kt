@@ -1,13 +1,16 @@
 package com.parat.academiccalender
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.Worker
@@ -158,9 +162,36 @@ val eventsList = listOf(
     AcademicEvent("Submission of Concrete Plan by Concerned HOD’s to the Dean for conducting remedial classes for weak students ", LocalDate.of(2025, 4, 29), EventType.EVENT),
     AcademicEvent("Submission of Concrete Plan by Concerned HOD’s to the Dean for conducting remedial classes for weak students ", LocalDate.of(2025, 4, 30), EventType.EVENT),
     AcademicEvent("Summer Vacation Start", LocalDate.of(2025, 6, 1), EventType.VACATION),
+    AcademicEvent("Commentmence of Academic Session", LocalDate.of(2025, 5, 30), EventType.EVENT),
+    AcademicEvent("Inssuing reliving Letter for Summer Internal ship (3rd & 5th as applicable)", LocalDate.of(2025, 5, 30), EventType.EVENT),
+    AcademicEvent("Inssuing reliving Letter for Summer Internal ship (3rd & 5th as applicable)", LocalDate.of(2025, 5, 31), EventType.EVENT),
+    AcademicEvent("Issuance of Libraby books Praparation of Students detail & LessionPlants in Teacher Diaries and Intraction with students to discuss Course Outcomes Display of Class time table.", LocalDate.of(2025, 7, 1), EventType.EVENT),
+    AcademicEvent("Semester Enrolment", LocalDate.of(2025, 7, 3), EventType.EVENT),
+    AcademicEvent("Semester Enrolment", LocalDate.of(2025, 7, 4), EventType.EVENT),
+    AcademicEvent("Semester Enrolment", LocalDate.of(2025, 7, 5), EventType.EVENT),
+    AcademicEvent("Semester Enrolment", LocalDate.of(2025, 7, 6), EventType.EVENT),
+    AcademicEvent("Semester Enrolment", LocalDate.of(2025, 7, 7), EventType.EVENT),
+    AcademicEvent("Semester Enrolment", LocalDate.of(2025, 7, 8), EventType.EVENT),
+    AcademicEvent("Semester Enrolment", LocalDate.of(2025, 7, 9), EventType.EVENT),
+    AcademicEvent("Semester Enrolment", LocalDate.of(2025, 7, 10), EventType.EVENT),
+    AcademicEvent("1st Class Test for (3rd & 5th) Semester", LocalDate.of(2025, 7, 25), EventType.CLASS_TEST),
+    AcademicEvent("1st Class Test for (3rd & 5th) Semester", LocalDate.of(2025, 7, 26), EventType.CLASS_TEST),
+    AcademicEvent("Display of 1st Class Test marks and identification of weak students for extra classes", LocalDate.of(2025, 7, 28), EventType.SCHEDULE),
+    AcademicEvent("Display of 1st Class Test marks and identification of weak students for extra classes", LocalDate.of(2025, 7, 29), EventType.SCHEDULE),
+    AcademicEvent("Submission of Concrete Plan by Concreted HOD's to the Principle for conducing remadial classes for weak Students.", LocalDate.of(2025, 7, 29), EventType.SCHEDULE),
+    AcademicEvent("Submission of Concrete Plan by Concreted HOD's to the Principle for conducing remadial classes for weak Students.", LocalDate.of(2025, 7, 30), EventType.SCHEDULE),
+    AcademicEvent("Independemce Day Celebration & Meritorious Students Encouragement Award(Intitute level)", LocalDate.of(2025, 8, 15), EventType.EVENT),
+    AcademicEvent("2st Class Test for (3rd & 5th) Semester", LocalDate.of(2025, 8, 22), EventType.CLASS_TEST),
+    AcademicEvent("2st Class Test for (3rd & 5th) Semester", LocalDate.of(2025, 7, 23), EventType.CLASS_TEST),
+    AcademicEvent("Display of 2st Class Test marks and identification of weak students for extra classes", LocalDate.of(2025, 8, 25), EventType.SCHEDULE),
+    AcademicEvent("Display of 2st Class Test marks and identification of weak students for extra classes", LocalDate.of(2025, 8, 26), EventType.SCHEDULE),
+    AcademicEvent("Submission of Concrete Plan by Concreted HOD's to the Principle for conducing remadial classes for weak Students.", LocalDate.of(2025, 8, 27), EventType.SCHEDULE),
+    AcademicEvent("Submission of Concrete Plan by Concreted HOD's to the Principle for conducing remadial classes for weak Students.", LocalDate.of(2025, 8, 28), EventType.SCHEDULE),
+    AcademicEvent("Teachers Day Celebration", LocalDate.of(2025, 9, 5), EventType.EVENT),
+    AcademicEvent("Parants Teachers Meeting", LocalDate.of(2025, 9, 13), EventType.SCHEDULE),
+    AcademicEvent("Hindi Diwas Celebration", LocalDate.of(2025, 9, 14), EventType.EVENT),
+
     AcademicEvent("Mid-Semester Exam", LocalDate.of(2025, 4, 10), EventType.EXAM),
-    AcademicEvent("Independence Day", LocalDate.of(2025, 8, 15), EventType.HOLIDAY),
-    AcademicEvent("Teacher's Day", LocalDate.of(2025, 9, 5), EventType.EVENT),
     AcademicEvent("Diwali", LocalDate.of(2025, 10, 20), EventType.HOLIDAY),
     AcademicEvent("Final Exam", LocalDate.of(2025, 11, 15), EventType.EXAM),
     AcademicEvent("Winter Vacation Start", LocalDate.of(2025, 12, 20), EventType.VACATION),
@@ -170,9 +201,17 @@ val eventsList = listOf(
 class MainActivity : ComponentActivity() {
     private val CHANNEL_ID = "academic_channel"
 
+    // Add this property for permission launcher
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        // You can handle the result here if needed
+    }
+
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        checkNotificationPermission() // <-- Add this line
         createNotificationChannel()
         scheduleDailyNotificationCheck()
 
@@ -181,6 +220,17 @@ class MainActivity : ComponentActivity() {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     AcademicCalendarScreen(events = eventsList)
                 }
+            }
+        }
+    }
+
+    // Add this function to check and request notification permission
+    private fun checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13+
+            val permission = Manifest.permission.POST_NOTIFICATIONS
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+                // Show permission dialog
+                requestPermissionLauncher.launch(permission)
             }
         }
     }
@@ -238,7 +288,7 @@ fun AcademicCalendarScreen(events: List<AcademicEvent>) {
         // Month Selector
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "Academic Calendar 2025",
+                text = "Academic Calendar ${currentDate.year}",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
